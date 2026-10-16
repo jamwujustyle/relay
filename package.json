@@ -1,6 +1,6 @@
 {
   "name": "relay-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A calm desktop inbox for requests, context, and your next move.",
   "homepage": "https://github.com/jamwujustyle/relay",
@@ -17,6 +17,7 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:ui": "playwright test",
     "test:desktop": "node tests/desktop-smoke.mjs",
+    "test:screen": "xvfb-run -a node tests/screen-smoke.mjs",
     "package:linux": "npm run build && electron-builder --linux AppImage deb --publish never",
     "package:deb": "npm run build && electron-builder --linux deb --publish never",
     "package:win": "npm run build && electron-builder --win nsis --publish never"
@@ -44,10 +45,39 @@
     "appId": "app.relay.desktop",
     "productName": "Relay",
     "icon": "public/relay-icon.png",
-    "directories": { "output": "release" },
-    "files": ["dist/**/*", "electron/**/*", "package.json"],
-    "linux": { "target": ["AppImage", "deb"], "maintainer": "Relay contributors", "category": "Office", "executableName": "relay-desktop", "syncDesktopName": true, "desktop": { "entry": { "StartupWMClass": "relay-desktop" } } },
-    "win": { "target": ["nsis"], "icon": "public/relay.ico", "signAndEditExecutable": false },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "Relay contributors",
+      "category": "Office",
+      "executableName": "relay-desktop",
+      "syncDesktopName": true,
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "relay-desktop"
+        }
+      }
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/relay.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

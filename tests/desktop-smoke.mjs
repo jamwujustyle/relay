@@ -36,7 +36,7 @@ try {
   assert.deepEqual(isolation, { contextIsolation: true, nodeIntegration: false, sandbox: true });
   const loaded = await page.evaluate(() => window.relay.loadWorkspace());
   assert.deepEqual(loaded, workspace);
-  await expect(page.getByRole('heading', { name: 'Your next move.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   await expect(page.getByText('Check the native desktop bridge', { exact: true }).first()).toBeVisible();
   assert.deepEqual(pageErrors, [], 'The built desktop UI should render without page errors');
   const settings = await page.evaluate(() => window.relay.getSettings());
@@ -48,6 +48,8 @@ try {
   assert.equal(settings.outputTokensToday, 0);
   assert.equal(settings.estimatedCostToday, 0);
   assert.equal(typeof settings.shortcuts.capture, 'boolean');
+  assert.equal(typeof settings.shortcuts.screen, 'boolean');
+  assert.equal(await page.evaluate(() => typeof window.relay.readScreenCapture), 'function');
   savedClipboard = await app.evaluate(({ clipboard }) => ({ text: clipboard.readText(), html: clipboard.readHTML(), rtf: clipboard.readRTF(), image: clipboard.readImage().toDataURL() }));
   await page.evaluate(() => window.relay.writeClipboard('Relay clipboard smoke'));
   assert.equal((await page.evaluate(() => window.relay.readClipboard())).text, 'Relay clipboard smoke');
@@ -72,7 +74,7 @@ try {
   restarted.on('pageerror', error => restartErrors.push(error.message));
   await restarted.waitForFunction(() => Boolean(window.relay));
   assert.equal((await restarted.evaluate(() => window.relay.loadWorkspace())).tasks[0].title, workspace.tasks[0].title);
-  await expect(restarted.getByRole('heading', { name: 'Your next move.', exact: true })).toBeVisible();
+  await expect(restarted.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   await expect(restarted.getByText(workspace.tasks[0].title, { exact: true }).first()).toBeVisible();
   assert.deepEqual(restartErrors, [], 'The restarted desktop UI should render without page errors');
   console.log('Desktop smoke passed: built UI, no page errors, sandbox, bridge, settings, clipboard, URL guard, tray close, quit flush, restart persistence.');

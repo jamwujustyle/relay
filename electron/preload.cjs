@@ -7,11 +7,12 @@ contextBridge.exposeInMainWorld('relay', Object.freeze({
   saveSettings: settings => ipcRenderer.invoke('relay:save-settings', settings),
   runAI: request => ipcRenderer.invoke('relay:run-ai', request),
   readClipboard: () => ipcRenderer.invoke('relay:read-clipboard'),
+  readScreenCapture: () => ipcRenderer.invoke('relay:read-screen-capture'),
   writeClipboard: text => ipcRenderer.invoke('relay:write-clipboard', text),
   openExternal: url => ipcRenderer.invoke('relay:open-external', url),
   onAction: callback => {
     if (typeof callback !== 'function') throw new TypeError('Action callback must be a function.');
-    const listener = (_event, action) => { if (action === 'capture' || action === 'next') callback(action); };
+    const listener = (_event, action) => { if (action === 'capture' || action === 'screen' || action === 'next') callback(action); };
     ipcRenderer.on('relay:action', listener);
     ipcRenderer.send('relay:action-ready');
     return () => ipcRenderer.removeListener('relay:action', listener);

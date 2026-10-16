@@ -14,6 +14,7 @@ export const bridge: RelayBridge = window.relay ?? {
   async saveSettings() { throw new Error('API keys are available in the desktop app. Run npm run desktop to connect your key.') },
   async runAI() { throw new Error('Open Relay on your desktop to use your API key.') },
   async readClipboard() { return { text: await navigator.clipboard.readText() } },
+  async readScreenCapture() { throw new Error('Screen capture is available in the desktop app. You can paste or attach a screenshot here.') },
   async writeClipboard(text) { await navigator.clipboard.writeText(text) },
   async openExternal(url) {
     const parsed = new URL(url)

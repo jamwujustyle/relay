@@ -1,10 +1,11 @@
-const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, clipboard, shell, globalShortcut, safeStorage, dialog } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, clipboard, shell, globalShortcut, safeStorage, dialog, desktopCapturer, screen } = require('electron');
 const path = require('node:path');
 const zlib = require('node:zlib');
 const { pathToFileURL } = require('node:url');
 const { JsonStore } = require('./storage.cjs');
 const { SettingsManager } = require('./settings.cjs');
 const { GeminiClient } = require('./ai.cjs');
+const { captureScreen, ScreenCaptureService } = require('./screen-capture.cjs');
 const validate = require('./validation.cjs');
 
 const isDev = process.argv.includes('--dev') && !app.isPackaged;
@@ -30,7 +31,8 @@ let pendingAction;
 let settings;
 let workspaceStore;
 let configStore;
-const shortcuts = { capture: false, next: false };
+let screenCapture;
+const shortcuts = { capture: false, screen: false, next: false };
 
 function focus(action) {
   if (!window || window.isDestroyed()) return;
@@ -94,6 +96,7 @@ function setupIPC(ai) {
   handle('relay:get-settings', () => settings.get(shortcuts));
   handle('relay:save-settings', value => settings.save(value, shortcuts));
   handle('relay:run-ai', value => ai.run(value));
+  handle('relay:read-screen-capture', () => screenCapture.read());
   handle('relay:read-clipboard', () => {
     const text = clipboard.readText();
     validate.text(text, 100000, 'Clipboard text');
@@ -113,7 +116,7 @@ function setupIPC(ai) {
 function createWindow() {
   const icon = trayIcon();
   window = new BrowserWindow({
-    width: 1440, height: 940, minWidth: 1050, minHeight: 680, title: 'Relay', backgroundColor: '#f7f8fa', show: false, icon,
+    width: 1180, height: 780, minWidth: 900, minHeight: 620, title: 'Relay', backgroundColor: '#f7f8fa', show: false, icon,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, allowRunningInsecureContent: false, spellcheck: true },
   });
   window.removeMenu();
@@ -142,7 +145,8 @@ function createWindow() {
     tray.setToolTip('Relay — your request inbox');
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: 'Open Relay', click: () => focus() },
-      { label: 'Capture request', click: () => focus('capture') },
+      { label: 'Capture clipboard', click: () => focus('capture') },
+      { label: 'Capture screen', click: () => screenCapture.request() },
       { label: 'Next move', click: () => focus('next') },
       { type: 'separator' }, { label: 'Quit Relay', click: () => app.quit() },
     ]));
@@ -159,9 +163,11 @@ else {
     workspaceStore = new JsonStore(path.join(directory, 'workspace.json'), validate.workspace, validate.MAX_WORKSPACE_BYTES);
     configStore = new JsonStore(path.join(directory, 'settings.json'), validate.config, 16384);
     settings = new SettingsManager(configStore, safeStorage);
+    screenCapture = new ScreenCaptureService(() => captureScreen({ desktopCapturer, screen, window }), () => focus('screen'));
     setupIPC(new GeminiClient(settings));
     createWindow();
     try { shortcuts.capture = globalShortcut.register('CommandOrControl+Shift+Space', () => focus('capture')); } catch {}
+    try { shortcuts.screen = globalShortcut.register('CommandOrControl+Alt+Space', () => screenCapture.request()); } catch {}
     try { shortcuts.next = globalShortcut.register('CommandOrControl+Shift+Enter', () => focus('next')); } catch {}
   }).catch(() => {
     dialog.showErrorBox('Relay could not start', 'Desktop initialization failed. Check your system display and app installation.');
