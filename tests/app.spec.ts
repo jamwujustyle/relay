@@ -1,0 +1,123 @@
+import { test, expect } from '@playwright/test'
+
+test('captures original context, keeps active work steady, saves waiting and survives reload', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Get it out of your head.')).toBeVisible()
+  await page.getByRole('button', { name: 'Capture your first request' }).click()
+  await page.getByRole('textbox', { name: 'Capture title' }).fill('Check scenario generation')
+  await page.getByRole('textbox', { name: 'Original request' }).fill('проверить генерацию сценариев\nOriginal request must survive edits.')
+  await page.getByRole('button', { name: 'Telegram', exact: true }).click()
+  await page.getByRole('button', { name: 'Save to inbox' }).click()
+  await expect(page.getByLabel('Request details')).toBeVisible()
+  await expect(page.getByText('Original request must survive edits.', { exact: false })).toBeVisible()
+  await page.getByLabel('Request details').getByLabel('Status', { exact: true }).selectOption('active')
+  await page.getByRole('textbox', { name: 'Progress note' }).fill('Confirmed the reproduction. Next: fix the template.')
+  await page.getByRole('button', { name: 'Save progress note' }).click()
+  await expect(page.getByText('Confirmed the reproduction. Next: fix the template.', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Close details' }).click()
+  await page.getByRole('button', { name: 'Capture', exact: false }).first().click()
+  await page.getByRole('textbox', { name: 'Capture title' }).fill('Urgent incoming idea')
+  await page.getByRole('textbox', { name: 'Original request' }).fill('New request with no commitment.')
+  await page.getByLabel('Priority', { exact: true }).selectOption('high')
+  await page.getByRole('button', { name: 'Save to inbox' }).click()
+  await page.getByRole('button', { name: 'Close details' }).click()
+  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'Overview' }).click()
+  await expect(page.locator('.next-card h2')).toHaveText('Check scenario generation')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByLabel('Request details').getByLabel('Status', { exact: true }).selectOption('waiting')
+  await page.getByPlaceholder('A person, answer, or dependency').fill('Client approval')
+  await page.getByLabel('Follow up on').fill('2026-12-20')
+  await page.getByRole('button', { name: 'Close details' }).click()
+  await expect(page.getByText('Everything in its place')).toBeVisible()
+  await page.reload()
+  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: /Waiting/ }).click()
+  await page.getByRole('button', { name: 'Open Check scenario generation', exact: true }).click()
+  await expect(page.getByPlaceholder('A person, answer, or dependency')).toHaveValue('Client approval')
+  await expect(page.getByLabel('Follow up on')).toHaveValue('2026-12-20')
+  await expect(page.getByText('Original request must survive edits.', { exact: false })).toBeVisible()
+})
+
+test('supports screenshots, searching, completion, backup export and safe import', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Capture your first request' }).click()
+  await page.getByRole('textbox', { name: 'Capture title' }).fill('Screenshot request')
+  await page.locator('input[type=file]').first().setInputFiles({ name: 'capture.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6HkAAAAAASUVORK5CYII=', 'base64') })
+  await page.getByRole('button', { name: 'Save to inbox' }).click()
+  await expect(page.getByRole('img', { name: 'capture.png' })).toBeVisible()
+  await page.getByRole('button', { name: 'Mark done' }).click()
+  await page.getByRole('button', { name: 'Close details' }).click()
+  await page.getByRole('textbox', { name: 'Search requests' }).fill('screenshot')
+  await expect(page.getByRole('button', { name: 'Open Screenshot request', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Settings', exact: false }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export backup' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/^relay-backup-/)
+  await page.getByRole('button', { name: 'Close dialog' }).click()
+  await page.locator('input[type=file]').last().setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{"version":1,"tasks":[{"title":"bad"}]}') })
+  await expect(page.getByRole('status')).toContainText('Couldn’t import backup')
+  await expect(page.getByRole('button', { name: 'Open Screenshot request', exact: true })).toBeVisible()
+})
+
+test('sample workspace, next actions, keyboard capture and settings are usable', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Explore a sample workspace' }).click()
+  await expect(page.locator('.sample-banner')).toBeVisible()
+  await page.getByRole('button', { name: 'Choose another' }).click()
+  await page.getByRole('button', { name: 'Not now', exact: true }).click()
+  await expect(page.locator('.next-choice h3')).toHaveText('Адаптировать брифинг под клиента')
+  await page.getByRole('button', { name: 'Continue this' }).click()
+  await page.getByRole('button', { name: 'Close details' }).click()
+  await page.keyboard.press('n')
+  await expect(page.getByRole('dialog', { name: 'Catch it before it slips away.' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Settings', exact: false }).click()
+  await expect(page.getByLabel('Gemini API key')).toBeDisabled()
+  await expect(page.getByText('You’re in the browser preview.', { exact: false })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Start fresh' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Continue' }).click()
+  await expect(page.getByText('Get it out of your head.')).toBeVisible()
+})
+
+test('AI suggestions require acceptance and preserve original context and handoff notes', async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = { hasApiKey: true, secureStorage: false, model: 'gemini-3.1-flash-lite', dailyLimit: 30, callsToday: 0, keyStorage: 'session' as const }
+    window.relay = {
+      loadWorkspace: async () => JSON.parse(localStorage.getItem('mock-workspace') || 'null'),
+      saveWorkspace: async value => { localStorage.setItem('mock-workspace', JSON.stringify(value)) },
+      getSettings: async () => settings,
+      saveSettings: async () => settings,
+      runAI: async () => ({ title: 'Suggested title', project: 'Relay', summary: 'A grounded suggestion.', relatedIds: [], inputTokens: 100, outputTokens: 50 }),
+      readClipboard: async () => ({ text: '' }),
+      writeClipboard: async text => { localStorage.setItem('mock-clipboard', text) },
+      openExternal: async () => {},
+      onAction: () => () => {},
+    }
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Capture your first request' }).click()
+  await page.getByRole('textbox', { name: 'Capture title' }).fill('Initial title')
+  await page.getByRole('textbox', { name: 'Original request' }).fill('Verbatim request from Telegram.')
+  await page.getByRole('button', { name: 'Save to inbox' }).click()
+  await page.getByRole('textbox', { name: 'Task title' }).fill('Manually edited title')
+  await page.getByRole('textbox', { name: 'Task title' }).press('Tab')
+  await page.getByRole('button', { name: 'Ask AI to organize' }).click()
+  await expect(page.getByRole('textbox', { name: 'Task title' })).toHaveValue('Manually edited title')
+  await page.getByRole('button', { name: 'Apply suggestion' }).click()
+  await expect(page.getByRole('textbox', { name: 'Task title' })).toHaveValue('Suggested title')
+  await page.getByRole('textbox', { name: 'Task title' }).focus()
+  await page.getByRole('textbox', { name: 'Task title' }).press('Tab')
+  await expect(page.getByRole('textbox', { name: 'Task title' })).toHaveValue('Suggested title')
+  await page.getByRole('textbox', { name: 'Progress note' }).fill('Next session: check edge cases.')
+  await page.getByRole('button', { name: 'Save progress note' }).click()
+  await page.getByRole('button', { name: 'Handoff', exact: true }).click()
+  const copied = await page.evaluate(() => localStorage.getItem('mock-clipboard'))
+  expect(copied).toContain('Verbatim request from Telegram.')
+  expect(copied).toContain('Next session: check edge cases.')
+  expect(copied).toContain('Suggested title')
+  await expect(page.getByText('Everything in its place')).toBeVisible()
+  await page.reload()
+  await page.getByRole('textbox', { name: 'Search requests' }).fill('Suggested title')
+  await expect(page.getByRole('button', { name: 'Open Suggested title', exact: true })).toBeVisible()
+})

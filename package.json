@@ -1,0 +1,53 @@
+{
+  "name": "relay-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A calm desktop inbox for requests, context, and your next move.",
+  "homepage": "https://github.com/jamwujustyle/relay",
+  "author": "Relay",
+  "license": "MIT",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "desktopName": "relay-desktop.desktop",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "desktop": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron . --dev\"",
+    "build": "tsc -b && vite build",
+    "start": "electron .",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:ui": "playwright test",
+    "test:desktop": "node tests/desktop-smoke.mjs",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb --publish never",
+    "package:deb": "npm run build && electron-builder --linux deb --publish never",
+    "package:win": "npm run build && electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^9.2.0",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.0.12",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vite": "^6.4.0",
+    "wait-on": "^8.0.0"
+  },
+  "build": {
+    "appId": "app.relay.desktop",
+    "productName": "Relay",
+    "icon": "public/relay-icon.png",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "electron/**/*", "package.json"],
+    "linux": { "target": ["AppImage", "deb"], "maintainer": "Relay contributors", "category": "Office", "executableName": "relay-desktop", "syncDesktopName": true, "desktop": { "entry": { "StartupWMClass": "relay-desktop" } } },
+    "win": { "target": ["nsis"], "icon": "public/relay.ico", "signAndEditExecutable": false },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+  }
+}
